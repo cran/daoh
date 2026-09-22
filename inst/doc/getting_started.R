@@ -48,8 +48,9 @@ cat("Mean difference in DAOH (nights - days):",
     round(mean(res_n$daoh - res_d$daoh), 3), "days\n")
 
 ## ----ba_plot------------------------------------------------------------------
+# bland_altman_daoh() reports in days by default (use_pc = TRUE for percentage)
 ba <- bland_altman_daoh(res_n, res_d)
-cat(sprintf("Mean difference: %.3f%%\n95%% LoA: %.3f%% to %.3f%%\n",
+cat(sprintf("Mean difference: %.3f days\n95%% LoA: %.3f to %.3f days\n",
             ba$mean_diff, ba$loa_lower, ba$loa_upper))
 
 plot_daoh_ba(ba, method_a = "Nights", method_b = "Days")

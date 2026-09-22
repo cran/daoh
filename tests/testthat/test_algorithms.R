@@ -48,8 +48,11 @@ test_that("calc_daoh: no admissions -> DAOH = period", {
   events <- data.frame(patientID="P1", admission=as.Date(NA),
                        discharge=as.Date(NA), dod=as.Date(NA))[0,]
   idx    <- data.frame(patientID="P1", indexDate=as.Date("2020-01-01"))
-  # Empty events: no hospital time
-  expect_equal(nrow(calc_daoh(events, idx, period=30)), 0)
+  # One row per index date; with no admissions, dih = 0 and DAOH = period
+  r <- calc_daoh(events, idx, period=30)
+  expect_equal(nrow(r), 1)
+  expect_equal(r$dih,  0)
+  expect_equal(r$daoh, 30)
 })
 
 test_that("calc_daoh: day-stay nights=30, days=29 over 30-day period", {
@@ -71,12 +74,32 @@ test_that("calc_daoh: systematic difference = n_episodes", {
   ex <- load_example("population")
   rn <- calc_daoh(ex$events, ex$index_dates, period=90, method="nights")
   rd <- calc_daoh(ex$events, ex$index_dates, period=90, method="days")
-  merged <- merge(rn[,c("patientID","indexDate","daoh","n_episodes")],
-                  rd[,c("patientID","indexDate","daoh")],
+  # Each episode contributes exactly 1 more day under "days" than "nights".
+  # Compare against the DAYS episode count: same-day stays contribute zero
+  # nights, so they are not counted as episodes by the nights method but
+  # still add one day each under the days method.
+  merged <- merge(rn[,c("patientID","indexDate","daoh")],
+                  rd[,c("patientID","indexDate","daoh","n_episodes")],
                   by=c("patientID","indexDate"), suffixes=c("_n","_d"))
   # Difference should equal n_episodes (within boundary correction tolerance)
   diff <- merged$daoh_n - merged$daoh_d
   expect_true(all(abs(diff - merged$n_episodes) <= 1))
+})
+
+test_that("calc_daoh: exact method with POSIXct uses local calendar dates", {
+  # Regression: as.Date(POSIXct) converts via UTC, which shifted local times
+  # earlier than the UTC offset (e.g. NZ mornings) onto the previous calendar
+  # day, and hospital intervals were measured from a UTC origin (offsetting
+  # them by the UTC offset relative to the index windows).
+  events <- data.frame(patientID = "P1",
+                       admission = as.POSIXct("2015-06-15 10:00:00"),
+                       discharge = as.POSIXct("2015-06-15 18:00:00"))
+  idx <- data.frame(patientID = "P1",
+                    indexDate = as.POSIXct("2015-06-15 10:00:00"))
+  r <- calc_daoh(events, idx, period = 30, method = "exact")
+  expect_equal(as.character(r$indexDate), "2015-06-15")
+  expect_equal(r$dih,  8 / 24,      tolerance = 1e-9)
+  expect_equal(r$daoh, 30 - 8 / 24, tolerance = 1e-9)
 })
 
 test_that("daoh_reclassify: pct_reclassified is numeric in [0,100]", {

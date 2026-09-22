@@ -4,14 +4,19 @@
 #'   [calc_daoh()] for one method/period combination.
 #' @param quantiles Numeric vector of quantiles to report. Default
 #'   `c(0.10, 0.25, 0.50)`.
+#' @param use_pc Logical. Summarise `daoh` in days (default, `FALSE`) or
+#'   `daohPC` as a percentage of the period (`TRUE`).
 #' @return A data.frame with one row per method/period and columns for mean,
-#'   median, and the requested quantiles.
+#'   median, and the requested quantiles (in days, or percentage when
+#'   `use_pc = TRUE`).
 #' @export
-daoh_summary <- function(results_list, quantiles = c(0.10, 0.25, 0.50)) {
+daoh_summary <- function(results_list, quantiles = c(0.10, 0.25, 0.50),
+                         use_pc = FALSE) {
   stopifnot(is.list(results_list), !is.null(names(results_list)))
+  col <- if (use_pc) "daohPC" else "daoh"
 
   rows <- lapply(names(results_list), function(nm) {
-    x <- results_list[[nm]]$daohPC
+    x <- results_list[[nm]][[col]]
     qs <- quantile(x, quantiles, na.rm = TRUE)
     row <- data.frame(
       label = nm,
@@ -29,6 +34,18 @@ daoh_summary <- function(results_list, quantiles = c(0.10, 0.25, 0.50)) {
 }
 
 
+## Internal: fast keyed join shared by the comparison functions. Base R
+## merge() dominates runtime on multi-million-row inputs; data.table's merge
+## is an order of magnitude faster and returns the same rows (row order may
+## differ, which none of the downstream statistics depend on).
+merge_pair <- function(res_a, res_b, col) {
+  a <- data.table::as.data.table(res_a[, c("patientID", "indexDate", col)])
+  b <- data.table::as.data.table(res_b[, c("patientID", "indexDate", col)])
+  as.data.frame(data.table::merge.data.table(
+    a, b, by = c("patientID", "indexDate"), suffixes = c("_a", "_b")))
+}
+
+
 #' Bland-Altman statistics for two DAOH variants
 #'
 #' Computes the mean difference, standard deviation of differences, and
@@ -37,17 +54,17 @@ daoh_summary <- function(results_list, quantiles = c(0.10, 0.25, 0.50)) {
 #'
 #' @param res_a,res_b data.frames (output of [calc_daoh()]) for two methods.
 #'   Must have columns `patientID`, `indexDate`, `daoh`.
-#' @param use_pc Logical. If `TRUE` (default) use `daohPC`; otherwise `daoh`.
+#' @param use_pc Logical. If `FALSE` (default) compare `daoh` (days); if
+#'   `TRUE`, compare `daohPC` (percentage of the period).
 #' @return A list with elements `mean_diff`, `sd_diff`, `loa_lower`,
-#'   `loa_upper`, and `data` (data.frame of paired values for plotting).
+#'   `loa_upper`, `centile_01`, `centile_99`, `units` (`"days"` or `"%"`,
+#'   which [plot_daoh_ba()] uses to label the axes), and `data`
+#'   (data.frame of paired values for plotting).
 #' @export
-bland_altman_daoh <- function(res_a, res_b, use_pc = TRUE) {
+bland_altman_daoh <- function(res_a, res_b, use_pc = FALSE) {
   col <- if (use_pc) "daohPC" else "daoh"
 
-  merged <- merge(res_a[, c("patientID", "indexDate", col)],
-                  res_b[, c("patientID", "indexDate", col)],
-                  by = c("patientID", "indexDate"),
-                  suffixes = c("_a", "_b"))
+  merged <- merge_pair(res_a, res_b, col)
 
   va <- merged[[paste0(col, "_a")]]
   vb <- merged[[paste0(col, "_b")]]
@@ -64,6 +81,7 @@ bland_altman_daoh <- function(res_a, res_b, use_pc = TRUE) {
     loa_upper = md + 1.96 * sd_d,
     centile_01 = quantile(diff, 0.01, na.rm = TRUE),
     centile_99 = quantile(diff, 0.99, na.rm = TRUE),
+    units = if (use_pc) "%" else "days",
     data = data.frame(average = avg, difference = diff)
   )
 }
@@ -77,10 +95,13 @@ bland_altman_daoh <- function(res_a, res_b, use_pc = TRUE) {
 #'
 #' @param results_list Named list of data.frames (output of [calc_daoh()]).
 #'   All elements must share the same patientID x indexDate pairs.
-#' @param use_pc Logical. Use `daohPC` (default `TRUE`) or `daoh`.
+#' @param use_pc Logical. Use `daoh` in days (default, `FALSE`) or `daohPC`
+#'   as a percentage (`TRUE`). ICC is invariant to this per-period rescaling,
+#'   so the value is the same either way; the argument is provided only for a
+#'   consistent interface.
 #' @return The output of [irr::icc()] for the combined method matrix.
 #' @export
-daoh_icc <- function(results_list, use_pc = TRUE) {
+daoh_icc <- function(results_list, use_pc = FALSE) {
   if (!requireNamespace("irr", quietly = TRUE))
     stop("Package 'irr' required. Install with: install.packages('irr')")
 
@@ -93,7 +114,10 @@ daoh_icc <- function(results_list, use_pc = TRUE) {
   for (nm in names(results_list)) {
     tmp <- results_list[[nm]][, c("patientID", "indexDate", col)]
     names(tmp)[3] <- nm
-    mat <- merge(mat, tmp, by = c("patientID", "indexDate"))
+    mat <- as.data.frame(data.table::merge.data.table(
+      data.table::as.data.table(mat),
+      data.table::as.data.table(tmp),
+      by = c("patientID", "indexDate")))
   }
 
   # Extract just the numeric columns
@@ -110,7 +134,9 @@ daoh_icc <- function(results_list, use_pc = TRUE) {
 #'
 #' @param res_a,res_b data.frames (output of [calc_daoh()]).
 #' @param n_groups Integer. Number of groups (default 4 = quartiles).
-#' @param use_pc Logical. Use `daohPC` (default) or `daoh`.
+#' @param use_pc Logical. Use `daoh` in days (default, `FALSE`) or `daohPC`
+#'   as a percentage (`TRUE`). Group membership is invariant to this
+#'   per-period rescaling, so the result is the same either way.
 #' @return A list with:
 #'   \describe{
 #'     \item{`confusion_matrix`}{Table of group assignments under a vs b.}
@@ -120,13 +146,10 @@ daoh_icc <- function(results_list, use_pc = TRUE) {
 #' @examples
 #' # See vignette("getting_started", package = "daoh")
 #' @export
-daoh_reclassify <- function(res_a, res_b, n_groups = 4, use_pc = TRUE) {
+daoh_reclassify <- function(res_a, res_b, n_groups = 4, use_pc = FALSE) {
   col <- if (use_pc) "daohPC" else "daoh"
 
-  merged <- merge(res_a[, c("patientID", "indexDate", col)],
-                  res_b[, c("patientID", "indexDate", col)],
-                  by = c("patientID", "indexDate"),
-                  suffixes = c("_a", "_b"))
+  merged <- merge_pair(res_a, res_b, col)
 
   va <- merged[[paste0(col, "_a")]]
   vb <- merged[[paste0(col, "_b")]]
@@ -188,7 +211,9 @@ daoh_reclassify <- function(res_a, res_b, n_groups = 4, use_pc = TRUE) {
 #'   evaluate reclassification. Values below 0.5 define lower ("poor outcome")
 #'   boundaries; values at or above 0.5 define upper ("excellent outcome")
 #'   boundaries. Default `c(0.05, 0.10, 0.90, 0.95)`.
-#' @param use_pc Logical. Use `daohPC` (default `TRUE`) or `daoh`.
+#' @param use_pc Logical. Use `daoh` in days (default, `FALSE`) or `daohPC`
+#'   as a percentage (`TRUE`). Thresholds and counts are reported in the
+#'   chosen unit; the reclassification proportions are unaffected.
 #'
 #' @return A data.frame with one row per boundary and columns:
 #'   \describe{
@@ -208,16 +233,13 @@ daoh_reclassify <- function(res_a, res_b, n_groups = 4, use_pc = TRUE) {
 #' @export
 daoh_reclassify_centile <- function(res_a, res_b,
                                      boundaries = c(0.05, 0.10, 0.90, 0.95),
-                                     use_pc = TRUE) {
+                                     use_pc = FALSE) {
   stopifnot(is.numeric(boundaries),
             all(boundaries > 0 & boundaries < 1))
 
   col <- if (use_pc) "daohPC" else "daoh"
 
-  merged <- merge(res_a[, c("patientID", "indexDate", col)],
-                  res_b[, c("patientID", "indexDate", col)],
-                  by     = c("patientID", "indexDate"),
-                  suffixes = c("_a", "_b"))
+  merged <- merge_pair(res_a, res_b, col)
 
   va <- merged[[paste0(col, "_a")]]
   vb <- merged[[paste0(col, "_b")]]

@@ -4,14 +4,16 @@
 \alias{daoh_reclassify}
 \title{Quartile reclassification across two DAOH methods}
 \usage{
-daoh_reclassify(res_a, res_b, n_groups = 4, use_pc = TRUE)
+daoh_reclassify(res_a, res_b, n_groups = 4, use_pc = FALSE)
 }
 \arguments{
 \item{res_a, res_b}{data.frames (output of \code{\link[=calc_daoh]{calc_daoh()}}).}
 
 \item{n_groups}{Integer. Number of groups (default 4 = quartiles).}
 
-\item{use_pc}{Logical. Use \code{daohPC} (default) or \code{daoh}.}
+\item{use_pc}{Logical. Use \code{daoh} in days (default, \code{FALSE}) or \code{daohPC}
+as a percentage (\code{TRUE}). Group membership is invariant to this
+per-period rescaling, so the result is the same either way.}
 }
 \value{
 A list with:

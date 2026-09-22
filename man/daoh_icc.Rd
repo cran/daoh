@@ -4,13 +4,16 @@
 \alias{daoh_icc}
 \title{Intraclass Correlation Coefficient across DAOH methods}
 \usage{
-daoh_icc(results_list, use_pc = TRUE)
+daoh_icc(results_list, use_pc = FALSE)
 }
 \arguments{
 \item{results_list}{Named list of data.frames (output of \code{\link[=calc_daoh]{calc_daoh()}}).
 All elements must share the same patientID x indexDate pairs.}
 
-\item{use_pc}{Logical. Use \code{daohPC} (default \code{TRUE}) or \code{daoh}.}
+\item{use_pc}{Logical. Use \code{daoh} in days (default, \code{FALSE}) or \code{daohPC}
+as a percentage (\code{TRUE}). ICC is invariant to this per-period rescaling,
+so the value is the same either way; the argument is provided only for a
+consistent interface.}
 }
 \value{
 The output of \code{\link[irr:icc]{irr::icc()}} for the combined method matrix.

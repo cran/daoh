@@ -8,7 +8,8 @@ plot_daoh_ba(
   ba_result,
   method_a = "Method A",
   method_b = "Method B",
-  use_hex = TRUE
+  use_hex = TRUE,
+  show_loa = FALSE
 )
 }
 \arguments{
@@ -18,6 +19,10 @@ plot_daoh_ba(
 
 \item{use_hex}{Logical. Use \code{geom_hex} for density (default \code{TRUE},
 recommended for large datasets).}
+
+\item{show_loa}{Logical. When \code{TRUE}, the numeric mean-bias and 95\%
+limits-of-agreement values are printed directly on the plot, next to
+their reference lines (in addition to the caption). Default \code{FALSE}.}
 }
 \value{
 A ggplot2 object.

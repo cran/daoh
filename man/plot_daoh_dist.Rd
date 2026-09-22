@@ -4,7 +4,14 @@
 \alias{plot_daoh_dist}
 \title{Plot the distribution of DAOH scores}
 \usage{
-plot_daoh_dist(result, log_y = TRUE, title = "DAOH distribution", bins = 50)
+plot_daoh_dist(
+  result,
+  log_y = TRUE,
+  title = "DAOH distribution",
+  bins = 50,
+  use_pc = FALSE,
+  ylab = "Count"
+)
 }
 \arguments{
 \item{result}{data.frame (output of \code{\link[=calc_daoh]{calc_daoh()}}).}
@@ -14,13 +21,18 @@ plot_daoh_dist(result, log_y = TRUE, title = "DAOH distribution", bins = 50)
 \item{title}{Character. Plot title.}
 
 \item{bins}{Integer. Number of histogram bins (default 50).}
+
+\item{use_pc}{Logical. Plot DAOH in days (\code{daoh}, the default) or as a
+percentage of the period (\code{daohPC}, when \code{TRUE}).}
+
+\item{ylab}{Character. y-axis label. Defaults to \code{"Count"} (the y-axis
+shows the absolute number of observations per bin).}
 }
 \value{
 A ggplot2 object.
 }
 \description{
-Produces a histogram of DAOH scores (as percentage) with deaths
-overlaid in a contrasting colour.
-The y-axis is log-scaled to aid visualisation of the bimodal
-distribution.
+Produces a histogram of DAOH scores with deaths overlaid in a
+contrasting colour. The y-axis is log-scaled to aid visualisation of
+the bimodal distribution.
 }

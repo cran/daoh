@@ -8,7 +8,7 @@ daoh_reclassify_centile(
   res_a,
   res_b,
   boundaries = c(0.05, 0.1, 0.9, 0.95),
-  use_pc = TRUE
+  use_pc = FALSE
 )
 }
 \arguments{
@@ -20,7 +20,9 @@ evaluate reclassification. Values below 0.5 define lower ("poor outcome")
 boundaries; values at or above 0.5 define upper ("excellent outcome")
 boundaries. Default \code{c(0.05, 0.10, 0.90, 0.95)}.}
 
-\item{use_pc}{Logical. Use \code{daohPC} (default \code{TRUE}) or \code{daoh}.}
+\item{use_pc}{Logical. Use \code{daoh} in days (default, \code{FALSE}) or \code{daohPC}
+as a percentage (\code{TRUE}). Thresholds and counts are reported in the
+chosen unit; the reclassification proportions are unaffected.}
 }
 \value{
 A data.frame with one row per boundary and columns:

@@ -4,7 +4,7 @@
 \alias{daoh_summary}
 \title{Compute DAOH summary statistics across all methods and periods}
 \usage{
-daoh_summary(results_list, quantiles = c(0.1, 0.25, 0.5))
+daoh_summary(results_list, quantiles = c(0.1, 0.25, 0.5), use_pc = FALSE)
 }
 \arguments{
 \item{results_list}{Named list of data.frames, each the output of
@@ -12,10 +12,14 @@ daoh_summary(results_list, quantiles = c(0.1, 0.25, 0.5))
 
 \item{quantiles}{Numeric vector of quantiles to report. Default
 \code{c(0.10, 0.25, 0.50)}.}
+
+\item{use_pc}{Logical. Summarise \code{daoh} in days (default, \code{FALSE}) or
+\code{daohPC} as a percentage of the period (\code{TRUE}).}
 }
 \value{
 A data.frame with one row per method/period and columns for mean,
-median, and the requested quantiles.
+median, and the requested quantiles (in days, or percentage when
+\code{use_pc = TRUE}).
 }
 \description{
 Compute DAOH summary statistics across all methods and periods

@@ -89,6 +89,24 @@ Therefore:
 \deqn{\text{DAOH}^{\text{nights}} - \text{DAOH}^{\text{days}} \approx N_{\text{episodes}}}
 }
 
+\section{Implementation}{
+
+
+Internally uses \pkg{data.table} for a fully vectorised pipeline:
+\enumerate{
+\item \code{foverlaps} matches each admission to every index period it
+overlaps (handles multiple index dates per patient correctly).
+\item Admissions are clipped to their matched period boundary.
+\item A single-pass cumulative-max sweep (via \code{ave}) groups
+overlapping/near-adjacent clips into merged episodes — equivalent to
+\code{\link[=merge_intervals]{merge_intervals()}}, O(n log n) overall.
+\item Dead time and DAOH are computed by vectorised arithmetic.
+}
+Column assignments use \code{data.table::set()} and base-R \code{ave()}
+throughout (no \code{:=}), so the function works correctly when loaded
+via \code{devtools::load_all()} as well as from an installed package.
+}
+
 \examples{
 # --- Example 1: Simple day-stay (highlights nights vs days difference) ---
 events <- data.frame(

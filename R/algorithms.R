@@ -64,17 +64,32 @@ hospital_time <- function(admission_dates, discharge_dates,
                           origin = as.Date("1970-01-01")) {
   method <- match.arg(method)
 
-  # Convert to numeric (days since origin)
-  to_num <- function(x) {
+  # Convert to numeric (days since origin).
+  # NOTE: as.Date() on POSIXct converts via UTC by default, which shifts any
+  # local time earlier than the UTC offset (e.g. NZ mornings) onto the
+  # previous calendar day. format() respects the input's timezone, so the
+  # local calendar date is preserved.
+  local_date <- function(x) {
     if (inherits(x, "POSIXct") || inherits(x, "POSIXlt")) {
-      as.numeric(as.Date(x) - as.Date(origin))
+      as.Date(format(x, "%Y-%m-%d"))
     } else {
-      as.numeric(as.Date(x) - as.Date(origin))
+      as.Date(x)
     }
+  }
+  to_num <- function(x) {
+    as.numeric(local_date(x) - as.Date(origin))
   }
   to_num_exact <- function(x) {
     if (inherits(x, "POSIXct") || inherits(x, "POSIXlt")) {
-      as.numeric(difftime(x, as.POSIXct(origin), units = "days"))
+      # Local calendar day + fraction of the local clock day. Using
+      # difftime(x, as.POSIXct(origin)) here would measure from the origin at
+      # 00:00 UTC, offsetting every value by the UTC offset (about -0.5 day
+      # in NZ) relative to the whole-day numbers used for the index-date
+      # period windows, and misaligning all interval clipping by ~12 hours.
+      frac <- (as.numeric(format(x, "%H")) * 3600 +
+               as.numeric(format(x, "%M")) * 60 +
+               as.numeric(format(x, "%S"))) / 86400
+      as.numeric(local_date(x) - as.Date(origin)) + frac
     } else {
       as.numeric(as.Date(x) - as.Date(origin))
     }

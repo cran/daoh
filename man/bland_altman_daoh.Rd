@@ -4,17 +4,20 @@
 \alias{bland_altman_daoh}
 \title{Bland-Altman statistics for two DAOH variants}
 \usage{
-bland_altman_daoh(res_a, res_b, use_pc = TRUE)
+bland_altman_daoh(res_a, res_b, use_pc = FALSE)
 }
 \arguments{
 \item{res_a, res_b}{data.frames (output of \code{\link[=calc_daoh]{calc_daoh()}}) for two methods.
 Must have columns \code{patientID}, \code{indexDate}, \code{daoh}.}
 
-\item{use_pc}{Logical. If \code{TRUE} (default) use \code{daohPC}; otherwise \code{daoh}.}
+\item{use_pc}{Logical. If \code{FALSE} (default) compare \code{daoh} (days); if
+\code{TRUE}, compare \code{daohPC} (percentage of the period).}
 }
 \value{
 A list with elements \code{mean_diff}, \code{sd_diff}, \code{loa_lower},
-\code{loa_upper}, and \code{data} (data.frame of paired values for plotting).
+\code{loa_upper}, \code{centile_01}, \code{centile_99}, \code{units} (\code{"days"} or \code{"\%"},
+which \code{\link[=plot_daoh_ba]{plot_daoh_ba()}} uses to label the axes), and \code{data}
+(data.frame of paired values for plotting).
 }
 \description{
 Computes the mean difference, standard deviation of differences, and
